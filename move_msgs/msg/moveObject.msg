@@ -1,0 +1,2 @@
+string hashID
+string name

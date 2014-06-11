@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Export-Package: burlap_msgs;version="0.0.0";uses:="org.ros.internal.me
+ ssage"
+Bundle-Version: 0.0.0
+Tool: Bnd-2.1.0.20130426-122213
+Bundle-Name: burlap_msgs
+Bnd-LastModified: 1402493508000
+Created-By: 1.7.0_51 (Oracle Corporation)
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: com.github.rosjava.burlap_msgs_generator.burlap_m
+ sgs
+Import-Package: org.ros.internal.message
+

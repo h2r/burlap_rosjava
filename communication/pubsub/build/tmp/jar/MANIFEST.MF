@@ -1,0 +1,25 @@
+Manifest-Version: 1.0
+Export-Package: burlap_msgs;version="0.1.0";uses:="org.ros.internal.me
+ ssage",com.github.communication.pubsub;version="0.1.0";uses:="burlap.
+ behavior.singleagent.planning,burlap.oomdp.auxiliary,burlap.oomdp.cor
+ e,burlap.oomdp.singleagent,org.ros.namespace,org.ros.node",move_msgs;
+ version="0.1.0";uses:="geometry_msgs,org.ros.internal.message,std_msg
+ s"
+Bundle-Version: 0.1.0
+Tool: Bnd-2.1.0.20130426-122213
+Bundle-Name: pubsub
+Bnd-LastModified: 1402496747000
+Created-By: 1.7.0_51 (Oracle Corporation)
+Bundle-ManifestVersion: 2
+Bundle-SymbolicName: com.github.rosjava.communication.pubsub
+Import-Package: burlap.behavior.singleagent,burlap.behavior.singleagen
+ t.planning,burlap.behavior.singleagent.planning.deterministic,burlap.
+ behavior.singleagent.planning.deterministic.informed,burlap.behavior.
+ singleagent.planning.deterministic.informed.astar,burlap.behavior.sta
+ tehashing,burlap.oomdp.auxiliary,burlap.oomdp.core,burlap.oomdp.singl
+ eagent,burlap.oomdp.singleagent.common,geometry_msgs;version="[1.10,2
+ )",object_recognition_msgs;version="[0.3,1)",org.apache.commons.loggi
+ ng;version="[1.1,2)",org.ros.concurrent,org.ros.internal.message,org.
+ ros.message,org.ros.namespace,org.ros.node,org.ros.node.topic,std_msg
+ s;version="[0.5,1)"
+
