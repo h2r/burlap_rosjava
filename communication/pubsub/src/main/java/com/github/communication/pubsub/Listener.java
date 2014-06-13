@@ -149,7 +149,7 @@ public class Listener extends AbstractNodeMain {
             double y = obj.getPose().getPose().getPose().getPosition().getY();
             double z = obj.getPose().getPose().getPose().getPosition().getZ();
 
-	    PickupAndPlaceDomain.setObject(s, number, x, y, z);
+	    PickupAndPlaceDomain.setObject(s, number, x, y, z, "red");
 
 	  }	
         }
