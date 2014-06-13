@@ -8,7 +8,7 @@ Export-Package: burlap_msgs;version="0.1.0";uses:="org.ros.internal.me
 Bundle-Version: 0.1.0
 Tool: Bnd-2.1.0.20130426-122213
 Bundle-Name: pubsub
-Bnd-LastModified: 1402496747000
+Bnd-LastModified: 1402696366000
 Created-By: 1.7.0_51 (Oracle Corporation)
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: com.github.rosjava.communication.pubsub
