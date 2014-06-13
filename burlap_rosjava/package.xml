@@ -1,0 +1,22 @@
+<package>
+  <name>burlap_rosjava</name>
+  <version>0.1.0</version>
+  <description>
+    Metapackage for Brown CS H2R baxter hackamegathon
+  </description>
+  <maintainer email="kofarrel@cs.brown.edu">kevin Farrell</maintainer>
+  <license>BSD</license>
+
+  <url>http://github.com/h2r/burlap_rosjava</url>
+  <author>h2r</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <run_depend>burlap_msgs</run_depend>
+  <run_depend>burlap_msgs_generator</run_depend>
+  <run_depend>communication</run_depend>
+  <run_depend>move_msgs</run_depend>
+  <run_depend>move_msgs_generator</run_depend>
+  <export>
+   <metapackage/>
+ </export>
+</package>
