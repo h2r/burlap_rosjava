@@ -160,12 +160,14 @@ public class Listener extends AbstractNodeMain {
 	    PickupAndPlaceDomain.setObject(s, number, x*100, y*100, z*100, "red");
 
 	  }	
-        }
+    }
     System.out.println("State: " + s.toString());
 	// Plan an action given the state of objects and the goal
 	InRegionGoal gc = new InRegionGoal();
 	gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region4"}));
-	//gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object1", "region8"}));
+	if (array.getObjects().size() != 1 ) {
+		gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object1", "region8"}));
+	}
 	TerminalFunction tf = new GoalConditionTF(gc);
 	RewardFunction rf = new UniformCostRF();
 	DiscretizingStateHashFactory hashingFactory = new DiscretizingStateHashFactory(30.);
