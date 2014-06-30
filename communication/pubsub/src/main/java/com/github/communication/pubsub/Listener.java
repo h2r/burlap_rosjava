@@ -155,6 +155,8 @@ public class Listener extends AbstractNodeMain {
         System.out.println("Y: " + y);
         System.out.println("Z: " + z);
 
+        number = (array.getObjects().size() == 1) ? 0 : number;
+        System.out.println("Number: " + number);
 	    PickupAndPlaceDomain.setObject(s, number, x*100, y*100, z*100, "red");
 
 	  }	
@@ -162,8 +164,8 @@ public class Listener extends AbstractNodeMain {
     System.out.println("State: " + s.toString());
 	// Plan an action given the state of objects and the goal
 	InRegionGoal gc = new InRegionGoal();
-	//gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region4"}));
-	gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object1", "region8"}));
+	gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region4"}));
+	//gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object1", "region8"}));
 	TerminalFunction tf = new GoalConditionTF(gc);
 	RewardFunction rf = new UniformCostRF();
 	DiscretizingStateHashFactory hashingFactory = new DiscretizingStateHashFactory(30.);
