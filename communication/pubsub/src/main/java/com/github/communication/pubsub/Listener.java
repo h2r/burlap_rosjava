@@ -132,7 +132,7 @@ public class Listener extends AbstractNodeMain {
     subscriber.addMessageListener(new MessageListener<RecognizedObjectArray>() {
       @Override
       public void onNewMessage(RecognizedObjectArray array) {
-	State s = gen.getCleanState(domain, 2, 9);
+	State s = gen.getCleanState(domain, array.getObjects().size(), 9);
 	PickupAndPlaceDomain.tileRegions(s, 3, 3, 0, 100., 0, 100, 20);
 
 	String coconut_id = "925c42faeac061f86fdbcf0b090efe57";
@@ -149,18 +149,25 @@ public class Listener extends AbstractNodeMain {
             double y = obj.getPose().getPose().getPose().getPosition().getY();
             double z = obj.getPose().getPose().getPose().getPosition().getZ();
 
-	    PickupAndPlaceDomain.setObject(s, number, x, y, z, "red");
+        
+        System.out.println("Object: " + number);
+        System.out.println("X: " + x);
+        System.out.println("Y: " + y);
+        System.out.println("Z: " + z);
+
+	    PickupAndPlaceDomain.setObject(s, number, x*100, y*100, z*100, "red");
 
 	  }	
         }
+    System.out.println("State: " + s.toString());
 	// Plan an action given the state of objects and the goal
 	InRegionGoal gc = new InRegionGoal();
-	gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region4"}));
+	//gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region4"}));
 	gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object1", "region8"}));
 	TerminalFunction tf = new GoalConditionTF(gc);
 	RewardFunction rf = new UniformCostRF();
-	DiscretizingStateHashFactory hasingFactory = new DiscretizingStateHashFactory(30.);
-	AStar planner = new AStar(domain, rf, gc, hasingFactory, new NullHeuristic());
+	DiscretizingStateHashFactory hashingFactory = new DiscretizingStateHashFactory(30.);
+	AStar planner = new AStar(domain, rf, gc, hashingFactory, new NullHeuristic());
 	planner.planFromState(s);
 	Policy p = new DDPlannerPolicy(planner);
 	AbstractGroundedAction a = p.getAction(s);
