@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2014 kofarrell.
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
-
 package com.github.communication.pubsub;
 
 import org.apache.commons.logging.Log;
@@ -26,6 +10,8 @@ import org.ros.node.topic.Subscriber;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.AbstractMap;
+import java.util.HashMap;
 
 import burlap.oomdp.core.State;
 import burlap.oomdp.core.Domain;
@@ -52,7 +38,14 @@ import burlap_msgs.*;
 import move_msgs.*;
 import com.github.communication.pubsub.DiscretizedStatePlanTest.InRegionGoal;
 
-import org.ros.node.topic.Publisher;
+import org.ros.node.topic.Publisher; 
+
+import org.ros.node.service.ServiceClient;
+import org.ros.node.service.ServiceResponseListener;
+import org.ros.exception.RosRuntimeException;
+import org.ros.exception.RemoteException;
+import org.ros.exception.ServiceNotFoundException;
+import object_recognition_msgs.GetObjectInformation.*;
 
 /**
  * A simple {@link Subscriber} {@link NodeMain}.
@@ -60,52 +53,29 @@ import org.ros.node.topic.Publisher;
 public class Listener extends AbstractNodeMain {
   Domain domain;
   PickupAndPlaceDomain gen;
+  String object_class, region_class, block_id, coconut_id;
+  Subscriber<RecognizedObjectArray> subscriber;
+  Publisher<moveObject> object_maker;
+  Publisher<moveRegion> region_maker;
+  Publisher<moveAction> moveAction_maker;
+  Publisher<Point> point_maker;
+  Publisher<Vector3> vector3_maker;
+
 
   public Listener() {
     PickupAndPlaceDomain gen = new PickupAndPlaceDomain(true);
     domain = gen.generateDomain();
+    region_class = "region";
+    object_class = "object";
   }
   @Override
   public GraphName getDefaultNodeName() {
     return GraphName.of("rosjava/listener");
   }
 
-  // Actual communication with ORK via /recognized_object_array topic
-  /*public void onStart(ConnectedNode connectedNode) {
-    final Log log = connectedNode.getLog();
-    Subscriber<RecognizedObjectArray> subscriber = connectedNode.newSubscriber("/recognized_object_array", RecognizedObjectArray._TYPE);
-    subscriber.addMessageListener(new MessageListener<RecognizedObjectArray>() {
-      @Override
-      public void onNewMessage(RecognizedObjectArray array) {
-	State s = new State();
-
-	String coconut_id = "925c42faeac061f86fdbcf0b090efe57";
-	String block_id = "925c42faeac061f86fdbcf0b09100a87";	
-
-	for (RecognizedObject obj : array.getObjects()) {
-	  String id = obj.getType().getKey();
-	  if (id.equals(coconut_id) || id.equals(block_id)) {
-	    String name = (id.equals(block_id)) ? "block" : "coconut_can";
-	    String object_class = "object";
-            double x = obj.getPose().getPose().getPose().getPosition().getX();
-            double y = obj.getPose().getPose().getPose().getPosition().getY();
-            double z = obj.getPose().getPose().getPose().getPosition().getZ();
-
-	    ObjectInstance o = new ObjectInstance(domain.getObjectClass(object_class), name);
-	    s.addObject(o);
-	    o.setValue("x", x);
-            o.setValue("y", y);
-	    o.setValue("z", z);
-            o.setValue("color", "red");
-	  }	
-        }
-      }*/
- 
   public void onStart(ConnectedNode connectedNode) {
     final Log log = connectedNode.getLog();
     Subscriber<RecognizedObjectArray> subscriber = connectedNode.newSubscriber("/recognized_object_array", RecognizedObjectArray._TYPE);
-
-    //Subscriber<burlap_state> subscriber = connectedNode.newSubscriber("chatter", burlap_state._TYPE);
 
     final Publisher<moveObject> object_maker = connectedNode.newPublisher("move_objects", moveObject._TYPE);
     final Publisher<moveRegion> region_maker = connectedNode.newPublisher("move_region", moveRegion._TYPE);
@@ -113,119 +83,151 @@ public class Listener extends AbstractNodeMain {
 
     final Publisher<Point> point_maker = connectedNode.newPublisher("PointMaker", Point._TYPE);
     final Publisher<Vector3> vector3_maker = connectedNode.newPublisher("Vector3Maker", Vector3._TYPE);
-    
-    // Tester to see that messages are being sent out correctly
-    Subscriber<moveAction> action_subscriber = connectedNode.newSubscriber("move_Actions", moveAction._TYPE);
-    action_subscriber.addMessageListener(new MessageListener<moveAction>() {	
-	public void onNewMessage(moveAction action) {
-	  System.out.println("Receiving move Action!");
-	  moveObject object = action.getObject();
-	  moveRegion region = action.getRegion();
-	  System.out.println("Object: "+object.getName()+" with HashID: "+object.getHashID());
-	  Point origin = region.getOrigin();
-	  Vector3 scale = region.getScale();
-	  System.out.println(region.getName()+"at "+origin.getX()+","+origin.getY()+","+origin.getZ());
-	  System.out.println("Region has scale <"+scale.getX()+","+scale.getY()+","+scale.getZ()+">");
+
+    final ServiceClient<GetObjectInformationRequest, GetObjectInformationResponse> serviceClient;
+	try {
+		serviceClient = connectedNode.newServiceClient("get_object_info", GetObjectInformation._TYPE);
+	} catch (ServiceNotFoundException e) {
+		throw new RosRuntimeException(e);
 	}
-      });
 
     subscriber.addMessageListener(new MessageListener<RecognizedObjectArray>() {
       @Override
       public void onNewMessage(RecognizedObjectArray array) {
-	State s = gen.getCleanState(domain, array.getObjects().size(), 9);
-	PickupAndPlaceDomain.tileRegions(s, 3, 3, 0, 100., 0, 100, 20);
 
-	String coconut_id = "925c42faeac061f86fdbcf0b090efe57";
-	String block_id = "925c42faeac061f86fdbcf0b09100a87";	
+      	// Maps object ID to real object name
+		final AbstractMap<String, String> object_map = new HashMap<String, String>();
 
-	// TODO: Deal with Header/FrameIDs
-	for (RecognizedObject obj : array.getObjects()) {
-	  String id = obj.getType().getKey();
-	  if (id.equals(coconut_id) || id.equals(block_id)) {
-            //Block will be object0 and Coconut Can will be object1 in Burlap
-	    int number = (id.equals(block_id)) ? 0 : 1;
-	    String object_class = "object";
-            double x = obj.getPose().getPose().getPose().getPosition().getX();
-            double y = obj.getPose().getPose().getPose().getPosition().getY();
-            double z = obj.getPose().getPose().getPose().getPosition().getZ();
+		// maps objectInstance name (object0, object1...) to object ID.
+		final AbstractMap<String, String> objectInstance_map = new HashMap<String, String>();
 
-        
-        System.out.println("Object: " + number);
-        System.out.println("X: " + x);
-        System.out.println("Y: " + y);
-        System.out.println("Z: " + z);
+		// Iterate once to see how many disctinct objects ORK has recognized.
+		for (final RecognizedObject obj : array.getObjects()) {
+		  object_map.put(obj.getType().getKey(), null);
+		}
 
-        number = (array.getObjects().size() == 1) ? 0 : number;
-        System.out.println("Number: " + number);
-	    PickupAndPlaceDomain.setObject(s, number, x*100, y*100, z*100, "red");
+      	if (object_map.size() == 0) {
+      		System.out.println("ORK recognized no objects, planning not possible!");
+      		return;
+      	}
 
-	  }	
-    }
-    System.out.println("State: " + s.toString());
-	// Plan an action given the state of objects and the goal
-	InRegionGoal gc = new InRegionGoal();
-	gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region4"}));
-	//gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object1", "region8"}));
-	TerminalFunction tf = new GoalConditionTF(gc);
-	RewardFunction rf = new UniformCostRF();
-	DiscretizingStateHashFactory hashingFactory = new DiscretizingStateHashFactory(30.);
-	AStar planner = new AStar(domain, rf, gc, hashingFactory, new NullHeuristic());
-	planner.planFromState(s);
-	Policy p = new DDPlannerPolicy(planner);
-	AbstractGroundedAction a = p.getAction(s);
-	String action_string = a.toString();
-	System.out.println(a.toString());
+		// getCleanState takes in a domain, number of distint objects in state, and number of regions 
+		// in the state
+		final State s = gen.getCleanState(domain, object_map.size(), 9);
+		// Splits off the table into 9 regions (3x3).
+		PickupAndPlaceDomain.tileRegions(s, 3, 3, 0, 100., 0, 100, 20);
 
-        // object0 is block, object1 is coconut_can
-	// Object has fields: NAME and HASHID
-	String object_name = action_string.substring(5,12);
-	int obj_number = Integer.parseInt(""+object_name.charAt(6));
-	ObjectInstance newobj_instance = s.getObjectsOfTrueClass("object").get(obj_number);
-        moveObject new_obj = object_maker.newMessage();
+		for (final RecognizedObject obj : array.getObjects()) {
+		  final String id = obj.getType().getKey();
+		  final GetObjectInformationRequest request = serviceClient.newMessage();
+		  request.setType(obj.getType());
 
-	String real_object_name = (obj_number == 0) ? "block" : "coconut_can";
-	String hash_id = (obj_number == 0) ? block_id : coconut_id;
-	new_obj.setHashID(hash_id);
-	new_obj.setName(real_object_name);
-	
-	/* Region has fields: SHAPE, SCALE, NAME and ORIGIN
-	 * SHAPE is an enum field of the message
-	 * NAME is a STRING 
+		  try {
+		  	serviceClient.call(request, new ServiceResponseListener<GetObjectInformationResponse>() {
+		  		public void onSuccess(GetObjectInformationResponse response) {
+		  			String name = response.getInformation().getName();
+		  			addObjectToDomain(s, obj, name, object_map.size(), objectInstance_map, id);
+		  			object_map.put(id, name);
+		  		}
+
+		  		public void onFailure(RemoteException e) {
+		  			throw new RosRuntimeException(e);
+		  		}
+		  	});
+		  } catch (RosRuntimeException e) {
+		  	throw new RosRuntimeException(e);
+		  }
+	    }
+	    // wait for all of my name/id pairs to have been added
+	    while (object_map.values().contains(null)) { }
+
+	    InRegionGoal gc = new InRegionGoal();
+		gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region8"}));
+
+		TerminalFunction tf = new GoalConditionTF(gc);
+		RewardFunction rf = new UniformCostRF();
+		DiscretizingStateHashFactory hashingFactory = new DiscretizingStateHashFactory(30.);
+		AStar planner = new AStar(domain, rf, gc, hashingFactory, new NullHeuristic());
+		planner.planFromState(s);
+		Policy p = new DDPlannerPolicy(planner);
+		AbstractGroundedAction a = p.getAction(s);
+
+		String action_string = a.toString();
+		System.out.println(a.toString());
+		action_string.split(" ");
+		String[] action_split = action_string.split(" ");
+		String object_name = action_split[1];
+		String region_name = action_split[2];
+
+		// Object has fields: NAME and HASHID
+		int obj_number = Integer.parseInt(""+object_name.charAt(object_name.length()-1));
+		ObjectInstance newobj_instance = s.getObjectsOfTrueClass(object_class).get(obj_number);
+		String hash_id = objectInstance_map.get(object_name);
+		String real_object_name = object_map.get(hash_id);
+
+		moveObject new_obj = object_maker.newMessage();
+		new_obj.setHashID(hash_id);
+		new_obj.setName(real_object_name);
+		
+		/* Region has fields: SHAPE, SCALE, NAME and ORIGIN
+		 * SHAPE is an enum field of the message
+		 * NAME is a STRING 
          * SCALE is a geometry_msg/Vector3, which has fields: X,Y and Z
          * ORIGIN is a geometry_msg/Point, which has fields: X,Y and Z
          */
-	String region_name = a.toString().substring(13);
-	int region_number = Integer.parseInt(""+region_name.charAt(6));
-        ObjectInstance region_obj = s.getObjectsOfTrueClass("region").get(region_number);
-	moveRegion region = region_maker.newMessage();
-	region.setName(region_name);
+		int region_number = Integer.parseInt(""+region_name.charAt(region_name.length()-1));
+	    ObjectInstance region_obj = s.getObjectsOfTrueClass(region_class).get(region_number);
+		
+		moveRegion region = region_maker.newMessage();
+		region.setName(region_name);
+		region.setShape(region.SHAPE_SQUARE);
+		
+		Point origin = point_maker.newMessage();
+		origin.setX(region_obj.getRealValForAttribute("top"));
+		origin.setY(region_obj.getRealValForAttribute("left"));
+		origin.setZ(region_obj.getRealValForAttribute("height"));
+		region.setOrigin(origin);
 
-	region.setShape(region.SHAPE_SQUARE);
-	
-	Point origin = point_maker.newMessage();
-	origin.setX(region_obj.getRealValForAttribute("top"));
-	origin.setY(region_obj.getRealValForAttribute("left"));
-	origin.setZ(region_obj.getRealValForAttribute("height"));
-	region.setOrigin(origin);
 
-
-	Vector3 scale = vector3_maker.newMessage();
-	scale.setX(0.333);
-	scale.setY(0.333);
-	scale.setZ(0.2);	
-	region.setScale(scale);
+		Vector3 scale = vector3_maker.newMessage();
+		scale.setX(0.333);
+		scale.setY(0.333);
+		scale.setZ(0.2);	
+		region.setScale(scale);
 
         /* MoveAction has a HEADER and fields: OBJECT, REGION
          * HEADER has a Frame_ID, which is the same as the ORK message FramID
          * OBJECT is our custom defined object message from above
          * REGION is our custom defined region message from above
          */ 
-	moveAction action = moveAction_maker.newMessage();
-	//action.setHeader();
-	action.setObject(new_obj);
-	action.setRegion(region);
-	moveAction_maker.publish(action);
+		moveAction action = moveAction_maker.newMessage();
+		action.setObject(new_obj);
+		action.setRegion(region);
+		moveAction_maker.publish(action);
+
+		// return here to avoid planning twice. A race condition occurs when ork recognizes
+		// two objects as the same object, and thus it can possibly try to plan twice.
+		return;
       }
     });
+
+
+  }
+
+  public void addObjectToDomain(State s, RecognizedObject obj, String name, int disctinct_objects,
+  	AbstractMap<String, String> objectInstance_map, String id) {
+  	int number = (name.equals("small_blue_block")) ? 0 : 1;
+  	// If there's only one recognized object, then either object should have number 0, 
+    // to avoid out of bound errors.
+    number = (disctinct_objects == 1) ? 0 : number;
+    objectInstance_map.put("object"+number, id);
+
+    double x = obj.getPose().getPose().getPose().getPosition().getX();
+    double y = obj.getPose().getPose().getPose().getPosition().getY();
+    double z = obj.getPose().getPose().getPose().getPosition().getZ();
+
+    // Red is default color, which isn't currently used at all. x,y,z are multiplied
+    // by 100 to convert from meters -> centimeters.
+    PickupAndPlaceDomain.setObject(s, number, x*100, y*100, z*100, "red");
   }
 }
