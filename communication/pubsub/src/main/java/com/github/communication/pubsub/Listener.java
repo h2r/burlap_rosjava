@@ -126,6 +126,7 @@ public class Listener extends AbstractNodeMain {
 		  	serviceClient.call(request, new ServiceResponseListener<GetObjectInformationResponse>() {
 		  		public void onSuccess(GetObjectInformationResponse response) {
 		  			String name = response.getInformation().getName();
+		  			System.out.println("Object recognized " + name);
 		  			addObjectToDomain(s, obj, name, object_map.size(), objectInstance_map, id);
 		  			object_map.put(id, name);
 		  		}
@@ -142,7 +143,9 @@ public class Listener extends AbstractNodeMain {
 	    while (object_map.values().contains(null)) { }
 
 	    InRegionGoal gc = new InRegionGoal();
-		gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{"object0", "region8"}));
+		String domain_object = (object_map.size() > 1) ? "object1" : "object0";
+		System.out.println("Goal object: " + domain_object);
+		gc.addGP(new GroundedProp(domain.getPropFunction(PickupAndPlaceDomain.PFINREGION), new String[]{domain_object, "region8"}));
 
 		TerminalFunction tf = new GoalConditionTF(gc);
 		RewardFunction rf = new UniformCostRF();
@@ -164,7 +167,7 @@ public class Listener extends AbstractNodeMain {
 		ObjectInstance newobj_instance = s.getObjectsOfTrueClass(object_class).get(obj_number);
 		String hash_id = objectInstance_map.get(object_name);
 		String real_object_name = object_map.get(hash_id);
-
+		System.out.println("Real object name: " + real_object_name);
 		moveObject new_obj = object_maker.newMessage();
 		new_obj.setHashID(hash_id);
 		new_obj.setName(real_object_name);
@@ -216,7 +219,7 @@ public class Listener extends AbstractNodeMain {
 
   public void addObjectToDomain(State s, RecognizedObject obj, String name, int disctinct_objects,
   	AbstractMap<String, String> objectInstance_map, String id) {
-  	int number = (name.equals("small_blue_block")) ? 0 : 1;
+  	int number = (name.equals("coconut")) ? 0 : 1;
   	// If there's only one recognized object, then either object should have number 0, 
     // to avoid out of bound errors.
     number = (disctinct_objects == 1) ? 0 : number;
