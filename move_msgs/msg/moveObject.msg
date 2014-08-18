@@ -1,2 +1,0 @@
-string hashID
-string name
